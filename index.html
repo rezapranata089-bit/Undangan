@@ -113,9 +113,10 @@
         // Jumlah total gambar kamu (0 sampai 239)
         const frameCount = 240; 
 
-        // Fungsi pemanggil file gambar sesuai format barumu: frame(0).webp
+        // Fungsi pemanggil file gambar menggunakan CDN jsDelivr
+        // Repositori GitHub WAJIB diubah menjadi Public agar link ini berfungsi
         const currentFrame = index => {
-            return `gambar-undangan/frame(${index}).webp`;
+            return `https://cdn.jsdelivr.net/gh/rezapranata089-bit/Undangan@main/gambar-undangan/frame(${index}).webp`;
         };
 
         // Mengatur resolusi internal canvas sesuai dimensi aslimu (600x1067)
