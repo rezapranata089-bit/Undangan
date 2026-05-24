@@ -13,11 +13,15 @@
             margin: 0;
             padding: 0;
             background-color: #000;
-            /* Tinggi halaman (700vh) diatur agar durasi scroll 240 gambar pas, tidak terlalu cepat/lambat */
-            height: 700vh; 
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             color: white;
             overflow-x: hidden;
+        }
+
+        .ruang-animasi {
+            /* Area kosong agar user bisa scroll untuk menjalankan animasi tanpa melihat teks dulu */
+            height: 500vh; 
+            width: 100%;
         }
 
         #kamera-canvas {
@@ -27,10 +31,10 @@
             width: 100vw;
             height: 100vh;
             object-fit: cover; /* Memastikan video/gambar memenuhi layar HP dengan rapi */
-            z-index: -1;
+            z-index: -2; /* Dipindah ke paling belakang */
         }
 
-        /* Overlay transparan agar teks undangan lebih mudah dibaca di atas gambar */
+        /* Overlay transparan di atas gambar */
         .overlay {
             position: fixed;
             top: 0;
@@ -38,13 +42,15 @@
             width: 100vw;
             height: 100vh;
             background: rgba(0, 0, 0, 0.25);
-            z-index: 0;
+            z-index: -1; 
             pointer-events: none;
         }
 
         .container-konten {
             position: relative;
-            z-index: 1;
+            z-index: 10;
+            background-color: #000; /* Memberi warna background agar menutupi gambar saat konten naik */
+            padding-bottom: 50px;
         }
 
         .konten {
@@ -83,6 +89,8 @@
     <canvas id="kamera-canvas"></canvas>
     
     <div class="overlay"></div>
+    
+    <div class="ruang-animasi"></div>
 
     <div class="container-konten">
         <div class="konten">
@@ -139,10 +147,15 @@
         // Mendeteksi pergerakan scroll layar HP
         window.addEventListener('scroll', () => {  
             const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            
+            // Fokus animasi HANYA pada tinggi area ruang-animasi (500vh)
+            const animScrollHeight = window.innerHeight * 5; 
             
             // Mengubah posisi scroll menjadi pecahan persen (0.0 hingga 1.0)
-            const scrollFraction = scrollTop / maxScroll;
+            let scrollFraction = scrollTop / animScrollHeight;
+            
+            // Kunci gambar di frame terakhir saat user lanjut scroll ke bawah teks undangan
+            if (scrollFraction > 1) scrollFraction = 1;
 
             // Mengonversi pecahan persen ke indeks nomor frame gambar (0 hingga 239)
             let frameIndex = Math.floor(scrollFraction * frameCount);
