@@ -18,6 +18,61 @@
             overflow-x: hidden;
         }
 
+        /* Kelas untuk mengunci scroll saat loading */
+        body.terkunci {
+            overflow: hidden;
+        }
+
+        /* Desain Layar Start / Cover */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000; 
+            z-index: 9999;
+            display: flex;
+            align-items: flex-end; /* Memindahkan teks ke bagian bawah layar */
+            justify-content: center;
+            padding-bottom: 12vh; /* Jarak aman teks dari dasar layar HP */
+            transition: opacity 1s ease-in-out, visibility 1s;
+        }
+
+        /* Canvas khusus untuk menampilkan amplop membuka */
+        #envelope-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* KUNCI FULLSCREEN: Memaksa gambar menutupi seluruh layar */
+            z-index: 1;
+            transition: transform 0.3s;
+        }
+
+        /* Saat loading selesai, beri visual bahwa amplop bisa diklik */
+        #start-screen.siap-buka #envelope-canvas {
+            cursor: pointer;
+        }
+        
+        #start-screen.siap-buka #envelope-canvas:hover {
+            transform: scale(1.03); /* Sedikit zoom saat ditahan */
+        }
+
+        /* Teks loading di atas amplop */
+        #loading-text {
+            position: relative;
+            z-index: 2; /* Wajib di atas canvas */
+            font-size: 1rem;
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.4); /* Background transparan agar teks terbaca di atas gambar terang */
+            padding: 8px 20px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+            pointer-events: none; /* Agar klik tidak terhalang teks */
+        }
+
         .ruang-animasi {
             /* Tinggi scroll animasi. Setelah 500vh dilewati, elemen ini akan ter-scroll ke atas secara natural */
             height: 500vh; 
@@ -89,7 +144,12 @@
         }
     </style>
 </head>
-<body>
+<body class="terkunci">
+
+    <div id="start-screen">
+        <canvas id="envelope-canvas"></canvas>
+        <p id="loading-text">Memuat surat... 0%</p>
+    </div>
 
     <div class="ruang-animasi">
         <div class="sticky-container">
@@ -120,103 +180,160 @@
         </div>
     </div>
 
-    <script>
-        const canvas = document.getElementById("kamera-canvas");
-        const context = canvas.getContext("2d");
-
-        // Jumlah total gambar (diubah menjadi 241 karena file dari 0 sampai 240)
-        const frameCount = 241; 
-
-        // Fungsi pemanggil file gambar menggunakan CDN jsDelivr
-        const currentFrame = index => {
-            return `https://cdn.jsdelivr.net/gh/rezapranata089-bit/Undangan@main/gambar-undangan/frame(${index}).webp`;
-        };
-
-        // Resolusi canvas
-        canvas.width = 600; 
-        canvas.height = 1067;
-
-        // Wadah menampung semua objek gambar di memori (Cache Array)
-        const images = [];
-        for (let i = 0; i < frameCount; i++) {
-            images.push(new Image());
-        }
-
-        // Memuat frame 0 di awal secara instan
-        images[0].src = currentFrame(0);
-        images[0].onload = () => {
-            context.drawImage(images[0], 0, 0, canvas.width, canvas.height);
-        };
-
-        // Variabel penanda frame aktif saat ini
-        let frameTerakhir = 0;
-
-        // Fungsi menggambar ke canvas secara instan dari memori RAM
-        const updateImage = index => {
-            if (images[index] && images[index].complete) {
-                // Jika gambar sudah selesai didownload, langsung gambar ke layar
-                context.drawImage(images[index], 0, 0, canvas.width, canvas.height);
-            } else if (images[index]) {
-                // Jika user scroll lebih cepat daripada speed download, pasang trigger otomatis
-                // Begitu file selesai didownload, langsung tampilkan jika user masih di posisi scroll tersebut
-                images[index].addEventListener('load', () => {
-                    if (frameTerakhir === index) {
-                        context.drawImage(images[index], 0, 0, canvas.width, canvas.height);
-                    }
-                }, { once: true });
-            }
-        };
-
-        // Mendeteksi pergerakan scroll
-        window.addEventListener('scroll', () => {  
-            const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                        <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // --- BAGIAN 1: SETUP CANVAS UTAMA (UNDANGAN 100 FRAME) ---
+            const canvasMain = document.getElementById("kamera-canvas");
+            const contextMain = canvasMain.getContext("2d");
+            const mainFrameCount = 100; 
             
+            const mainFrameUrl = index => {
+                const angkaIndex = String(index).padStart(3, '0');
+                return `https://cdn.jsdelivr.net/gh/rezapranata089-bit/Undangan@main/gambar-undangan/Project%2067%20[581848A]_${angkaIndex}.jpg`;
+            };
+
+            canvasMain.width = 600; 
+            canvasMain.height = 1067;
+            const mainImages = [];
+            for (let i = 0; i < mainFrameCount; i++) { mainImages.push(new Image()); }
+
+            mainImages[0].src = mainFrameUrl(0);
+            mainImages[0].onload = () => { contextMain.drawImage(mainImages[0], 0, 0, canvasMain.width, canvasMain.height); };
+
+            let lastMainFrame = 0;
+            const updateMainImage = index => {
+                if (mainImages[index] && mainImages[index].complete) {
+                    contextMain.drawImage(mainImages[index], 0, 0, canvasMain.width, canvasMain.height);
+                }
+            };
+
             const ruangAnimasi = document.querySelector('.ruang-animasi');
-            const animScrollHeight = ruangAnimasi.offsetHeight - window.innerHeight; 
-            
-            let scrollFraction = scrollTop / animScrollHeight;
-            
-            // Kunci absolut agar scrollFraction tidak tembus ke angka minus atau lebih dari 1 saat HP memantul (bounce)
-            if (scrollFraction > 1) scrollFraction = 1;
-            if (scrollFraction < 0) scrollFraction = 0; 
+            let windowHeight = window.innerHeight;
+            ruangAnimasi.style.height = (windowHeight * 5) + 'px'; 
+            let animScrollHeight = ruangAnimasi.offsetHeight - windowHeight;
+            let lastWidth = window.innerWidth;
 
-            // Perhitungan frame final
-            let frameIndex = Math.min(
-                frameCount - 1,
-                Math.floor(scrollFraction * (frameCount - 1)) // Disesuaikan agar berhenti presisi di frame terakhir
-            );
+            window.addEventListener('resize', () => {
+                if (window.innerWidth !== lastWidth) {
+                    lastWidth = window.innerWidth;
+                    windowHeight = window.innerHeight;
+                    ruangAnimasi.style.height = (windowHeight * 5) + 'px';
+                    animScrollHeight = ruangAnimasi.offsetHeight - windowHeight;
+                }
+            });
+
+            window.addEventListener('scroll', () => {  
+                const rect = ruangAnimasi.getBoundingClientRect();
+                let scrollY = -rect.top; 
+                if (scrollY < 0) scrollY = 0;
+                if (scrollY > animScrollHeight) scrollY = animScrollHeight;
+                let scrollFraction = scrollY / animScrollHeight;
+                let frameIndex = Math.floor(scrollFraction * (mainFrameCount - 1));
+                if (frameIndex > 99) frameIndex = 99;
+                if (frameIndex < 0) frameIndex = 0;
+
+                if (frameIndex !== lastMainFrame) {
+                    lastMainFrame = frameIndex; 
+                    requestAnimationFrame(() => updateMainImage(frameIndex));
+                }
+            }, { passive: true });
+
+            // --- BAGIAN 2: SETUP START SCREEN (COVER AMPLOP 93 FRAME) ---
+            const startScreen = document.getElementById("start-screen");
+            const canvasEnv = document.getElementById("envelope-canvas");
+            const contextEnv = canvasEnv.getContext("2d");
+            const loadingText = document.getElementById("loading-text");
             
-            // Jalankan fungsi HANYA jika indeks frame benar-benar berubah
-            if (frameIndex !== frameTerakhir) {
-                frameTerakhir = frameIndex; 
-                requestAnimationFrame(() => updateImage(frameIndex));
+            const envelopeFrameCount = 93; 
+            const envelopeFrameUrl = index => {
+                return `https://cdn.jsdelivr.net/gh/rezapranata089-bit/Undangan@main/gambar-undangan/gambar(${index}).jpeg`;
+            };
+
+            // Resolusi disesuaikan dengan file amplop kamu (1080x1920)
+            canvasEnv.width = 1080; 
+            canvasEnv.height = 1920;
+            
+            const envImages = [];
+            for (let i = 0; i < envelopeFrameCount; i++) { envImages.push(new Image()); }
+
+            // --- BAGIAN 3: SISTEM LOADING PARALEL GABUNGAN ---
+            let totalImagesToLoad = mainFrameCount + envelopeFrameCount;
+            let imagesLoadedCount = 0;
+            let loadingSelesai = false;
+
+            function updateProgress() {
+                imagesLoadedCount++;
+                let persentase = Math.floor((imagesLoadedCount / totalImagesToLoad) * 100);
+                loadingText.innerText = `Memuat surat... ${persentase}%`;
+                
+                if (imagesLoadedCount >= totalImagesToLoad) {
+                    loadingSelesai = true;
+                    loadingText.innerText = "Sentuh surat untuk membuka";
+                    startScreen.classList.add("siap-buka");
+                }
+            }
+
+            envImages[0].src = envelopeFrameUrl(0);
+            envImages[0].onload = () => {
+                contextEnv.drawImage(envImages[0], 0, 0, canvasEnv.width, canvasEnv.height);
+                startPreloadAll();
+            };
+
+            function startPreloadAll() {
+                updateProgress(); // Sinkronisasi load envImages[0]
+                if(mainImages[0].complete) updateProgress(); // Sinkronisasi load mainImages[0]
+
+                // Load 92 gambar amplop sisanya
+                for (let i = 1; i < envelopeFrameCount; i++) {
+                    envImages[i].onload = updateProgress;
+                    envImages[i].onerror = updateProgress;
+                    envImages[i].src = envelopeFrameUrl(i);
+                }
+                // Load 99 gambar undangan sisanya
+                for (let i = 1; i < mainFrameCount; i++) {
+                    mainImages[i].onload = updateProgress;
+                    mainImages[i].onerror = updateProgress;
+                    mainImages[i].src = mainFrameUrl(i);
+                }
+            }
+
+            // --- BAGIAN 4: LOGIKA PLAY ANIMASI AMPLOP ---
+            let animasiBerjalan = false;
+
+            canvasEnv.addEventListener("click", () => {
+                // Mencegah error jika user mengeklik layar berkali-kali
+                if (!loadingSelesai || animasiBerjalan) return;
+                
+                animasiBerjalan = true;
+                loadingText.style.display = "none";
+                startScreen.classList.remove("siap-buka"); // Mematikan efek hover
+                playEnvelopeAnimation(1);
+            });
+
+            function playEnvelopeAnimation(frameIndex) {
+                if (frameIndex >= envelopeFrameCount) {
+                    fadeOutOfStartScreen();
+                    return;
+                }
+                
+                // PENGAMAN ANTI-BLANK: Gambar hanya akan dihapus jika frame selanjutnya VALID dan berwujud nyata (>0)
+                if (envImages[frameIndex].complete && envImages[frameIndex].naturalWidth > 0) {
+                    contextEnv.clearRect(0, 0, canvasEnv.width, canvasEnv.height);
+                    contextEnv.drawImage(envImages[frameIndex], 0, 0, canvasEnv.width, canvasEnv.height);
+                }
+                
+                setTimeout(() => {
+                    playEnvelopeAnimation(frameIndex + 1);
+                }, 41); 
+            }
+
+            function fadeOutOfStartScreen() {
+                startScreen.style.opacity = "0";
+                startScreen.style.visibility = "hidden";
+                document.body.classList.remove("terkunci");
+                window.scrollTo(0, 0);
             }
         });
-
-        // PRELOAD SEKUENSIAL YANG AMAN
-        // Mengisi objek gambar satu per satu agar antrean download teratur dan tidak membuat lag
-        const preloadImages = () => {
-            let i = 1; 
-            function loadNext() {
-                if (i >= frameCount) return; 
-                
-                images[i].addEventListener('load', () => {
-                    i++;
-                    loadNext();
-                }, { once: true });
-                
-                images[i].addEventListener('error', () => {
-                    i++;
-                    loadNext(); // Tetap lanjut seandainya ada 1 file gambar rusak/gagal
-                }, { once: true });
-                
-                images[i].src = currentFrame(i);
-            }
-            loadNext();
-        };
-        
-        // Mulai download latar belakang setelah halaman web siap
-        window.addEventListener('DOMContentLoaded', preloadImages);
     </script>
 
 </body>
